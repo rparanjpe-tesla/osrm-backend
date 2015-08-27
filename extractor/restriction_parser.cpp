@@ -196,6 +196,7 @@ RestrictionParser::TryParse(const osmium::Relation &relation) const
             {
                 if (restriction_container.restriction.via.way == SPECIAL_EDGEID) {
                     restriction_container.restriction.flags.uses_via_way = true;
+                    restriction_container.restriction.flags.ignore_write = true;
                     restriction_container.restriction.via.way = member.ref();
                 }
                 else {

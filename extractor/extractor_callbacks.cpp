@@ -69,7 +69,9 @@ void ExtractorCallbacks::ProcessRestriction(
 {
     if (restriction)
     {
-        external_memory.restrictions_list.push_back(restriction.get());
+        if (!restriction.get().restriction.flags.uses_via_way) {
+            external_memory.restrictions_list.push_back(restriction.get());
+        }
         // SimpleLogger().Write() << "from: " << restriction.get().restriction.from.node <<
         //                           ",via: " << restriction.get().restriction.via.node <<
         //                           ", to: " << restriction.get().restriction.to.node <<
@@ -80,6 +82,8 @@ void ExtractorCallbacks::ProcessRestriction(
 /**
  * Takes the geometry contained in the ```input_way``` and the tags computed
  * by the lua profile inside ```parsed_way``` and computes all edge segments.
+ *
+ * Updates the extraction container's datastructure: way_to_edges_map
  *
  * Depending on the forward/backwards weights the edges are split into forward
  * and backward edges.
@@ -181,10 +185,11 @@ void ExtractorCallbacks::ProcessWay(const osmium::Way &input_way, const Extracti
         osrm::for_each_pair(input_way.nodes().crbegin(), input_way.nodes().crend(),
                             [&](const osmium::NodeRef &first_node, const osmium::NodeRef &last_node)
                             {
-                                external_memory.all_edges_list.push_back(InternalExtractorEdge(
-                                    first_node.ref(), last_node.ref(), name_id, backward_weight_data,
+                                InternalExtractorEdge newEdge(first_node.ref(), last_node.ref(), name_id, backward_weight_data,
                                     true, false, parsed_way.roundabout, parsed_way.ignore_in_grid,
-                                    parsed_way.is_access_restricted, parsed_way.backward_travel_mode, false));
+                                    parsed_way.is_access_restricted, parsed_way.backward_travel_mode, false);
+                                external_memory.all_edges_list.push_back(newEdge);
+                                external_memory.way_to_edges_map[input_way.id()].push_back(newEdge);
                             });
 
         external_memory.way_start_end_id_list.push_back(
@@ -203,10 +208,11 @@ void ExtractorCallbacks::ProcessWay(const osmium::Way &input_way, const Extracti
         osrm::for_each_pair(input_way.nodes().cbegin(), input_way.nodes().cend(),
                             [&](const osmium::NodeRef &first_node, const osmium::NodeRef &last_node)
                             {
-                                external_memory.all_edges_list.push_back(InternalExtractorEdge(
-                                    first_node.ref(), last_node.ref(), name_id, forward_weight_data,
+                                InternalExtractorEdge newEdge(first_node.ref(), last_node.ref(), name_id, forward_weight_data,
                                     true, !forward_only, parsed_way.roundabout, parsed_way.ignore_in_grid,
-                                    parsed_way.is_access_restricted, parsed_way.forward_travel_mode, split_edge));
+                                    parsed_way.is_access_restricted, parsed_way.forward_travel_mode, split_edge);
+                                external_memory.all_edges_list.push_back(newEdge);
+                                external_memory.way_to_edges_map[input_way.id()].push_back(newEdge);
                             });
         if (split_edge)
         {
@@ -214,10 +220,11 @@ void ExtractorCallbacks::ProcessWay(const osmium::Way &input_way, const Extracti
             osrm::for_each_pair(input_way.nodes().cbegin(), input_way.nodes().cend(),
                                 [&](const osmium::NodeRef &first_node, const osmium::NodeRef &last_node)
                                 {
-                                    external_memory.all_edges_list.push_back(InternalExtractorEdge(
-                                        first_node.ref(), last_node.ref(), name_id, backward_weight_data,
+                                    InternalExtractorEdge newEdge(first_node.ref(), last_node.ref(), name_id, forward_weight_data,
                                         false, true, parsed_way.roundabout, parsed_way.ignore_in_grid,
-                                        parsed_way.is_access_restricted, parsed_way.backward_travel_mode, true));
+                                        parsed_way.is_access_restricted, parsed_way.backward_travel_mode, true);
+                                    external_memory.all_edges_list.push_back(newEdge);
+                                    external_memory.way_to_edges_map[input_way.id()].push_back(newEdge);
                                 });
         }
 
