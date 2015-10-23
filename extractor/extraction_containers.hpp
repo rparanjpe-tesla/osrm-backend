@@ -77,6 +77,7 @@ class ExtractionContainers
     STXXLEdgeVector all_edges_list;
     STXXLStringVector name_list;
     STXXLRestrictionsVector restrictions_list;
+    std::vector<InputRestrictionContainer> unfolded_restrictions_list;
     STXXLWayIDStartEndVector way_start_end_id_list;
     std::unordered_map<NodeID, NodeID> external_to_internal_node_id_map;
     std::unordered_map<EdgeID, std::vector<InternalExtractorEdge>> way_to_edges_map;

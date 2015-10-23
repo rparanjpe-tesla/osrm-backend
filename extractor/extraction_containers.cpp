@@ -500,6 +500,22 @@ void ExtractionContainers::WriteRestrictions(const std::string& path) const
     SimpleLogger().Write() << "usable restrictions: " << written_restriction_count;
 }
 
+// Finds node ID that connects the end points of two ways. If no node connects the ends of the ways, this returns
+// the SPECIAL_NODEID
+NodeID ExtractionContainers::findConnectingNodeID(const std::vector<InternalExtractorEdge> &way_edges1, const std::vector<InternalExtractorEdge> &way_edges2) {
+    if ((way_edges1.front().result.source == way_edges2.front().result.source) ||
+        (way_edges1.front().result.source == way_edges2.back().result.target))
+    {
+        return way_edges1.front().result.source;
+    }
+    else if ((way_edges1.back().result.target == way_edges2.back().result.target) ||
+             (way_edges1.back().result.target == way_edges2.front().result.source))
+    {
+        return way_edges1.back().result.target;
+    }
+    return SPECIAL_NODEID;
+}
+
 /**
 * Prepares restrictions for writing to .restrictions file. Unfolds via-way restrictions into multiple
 * restrictions (one for each node in the via way and two for the from-way and to-way). For example, a via-way
@@ -540,6 +556,7 @@ void ExtractionContainers::PrepareRestrictions()
     {
         // Skip via-way restrictions (we'll deal with these later)
         if (restrictions_iterator->restriction.flags.uses_via_way) {
+            ++restrictions_iterator++;
             continue;
         }
 
@@ -611,6 +628,7 @@ void ExtractionContainers::PrepareRestrictions()
     {
         // Skip via-way restrictions (we'll deal with these later)
         if (restrictions_iterator->restriction.flags.uses_via_way) {
+            ++restrictions_iterator;
             continue;
         }
 
@@ -671,37 +689,23 @@ void ExtractionContainers::PrepareRestrictions()
     TIMER_START(unfold_via_ways);
     int unfolded_restrictions_count = 0;
     restrictions_iterator = restrictions_list.begin();
-    auto wse_iterator_via = way_start_end_id_list.cbegin();
 
-    EdgeID via_way_id;
-    while (wse_iterator_via != way_start_end_id_list.cend() &&
-           restrictions_iterator != restrictions_list.end())
+    while (restrictions_iterator != restrictions_list.end())
     {
-        via_way_id = wse_iterator_via->way_id;
         if (!restrictions_iterator->restriction.flags.uses_via_way) {
-            continue;
-        }
-
-        if (via_way_id < restrictions_iterator->restriction.via.way)
-        {
-            ++wse_iterator_via;
-            continue;
-        }
-
-        if (via_way_id > restrictions_iterator->restriction.via.way)
-        {
-            SimpleLogger().Write(LogLevel::logDEBUG) << "Restriction references invalid via-way: " << restrictions_iterator->restriction.via.way;
             ++restrictions_iterator;
             continue;
         }
 
-        BOOST_ASSERT(via_way_id ==
-                     restrictions_iterator->restriction.via.way);
+        const std::vector<InternalExtractorEdge> from_edges = way_to_edges_map[restrictions_iterator->restriction.from.way];
+        const std::vector<InternalExtractorEdge> via_edges  = way_to_edges_map[restrictions_iterator->restriction.via.way];
+        const std::vector<InternalExtractorEdge> to_edges   = way_to_edges_map[restrictions_iterator->restriction.to.way];
 
-        std::vector<InternalExtractorEdge> from_edges = way_to_edges_map[restrictions_iterator->restriction.from.way];
-        std::vector<InternalExtractorEdge> via_edges  = way_to_edges_map[restrictions_iterator->restriction.via.way];
-        std::vector<InternalExtractorEdge> to_edges   = way_to_edges_map[restrictions_iterator->restriction.to.way];
-
+        if (from_edges.size() == 0 || via_edges.size() == 0 || to_edges.size() == 0) {
+            SimpleLogger().Write() << "Invalid via-way restriction: " << restrictions_iterator->restriction.via.way;
+            ++restrictions_iterator;
+            continue;
+        }
         NodeID from_via_node_id = findConnectingNodeID(from_edges, via_edges);
         NodeID via_to_node_id = findConnectingNodeID(via_edges, to_edges);
 
@@ -742,9 +746,7 @@ void ExtractionContainers::PrepareRestrictions()
         }
 
         // Write the unfolded restriction to the restrictions_list
-        restrictions_list.push_back(from_restriction);
-
-        InputRestrictionContainer via_restriction;
+        unfolded_restrictions_list.push_back(from_restriction);
 
         // Traverse forwards
         if (via_edges.front().result.source == from_via_node_id) {
@@ -752,8 +754,9 @@ void ExtractionContainers::PrepareRestrictions()
                 if (edge_iterator->result.target == via_to_node_id) {
                     break;
                 }
+                InputRestrictionContainer via_restriction;
                 via_restriction.restriction.via.node = edge_iterator->result.target;
-                restrictions_list.push_back(via_restriction);
+                unfolded_restrictions_list.push_back(via_restriction);
             }
         }
         // Traverse backwards
@@ -762,33 +765,20 @@ void ExtractionContainers::PrepareRestrictions()
                 if (edge_iterator->result.target == from_via_node_id) {
                     break;
                 }
+                InputRestrictionContainer via_restriction;
                 via_restriction.restriction.via.node = edge_iterator->result.target;
-                restrictions_list.push_back(via_restriction);
+                unfolded_restrictions_list.push_back(via_restriction);
             }
         }
 
-        restrictions_list.push_back(to_restriction);
+        unfolded_restrictions_list.push_back(to_restriction);
         ++unfolded_restrictions_count;
+
+        ++restrictions_iterator;
     }
 
     TIMER_STOP(unfold_via_ways);
-    std::cout << "ok, after " << TIMER_SEC(unfold_via_ways) << "s" << std::endl;
+    SimpleLogger().Write() << "ok, after " << TIMER_SEC(unfold_via_ways) << "s";
 
-    std::cout << "Number of unfolded restrictions: " << unfolded_restrictions_count << std::endl;
-}
-
-// Finds node ID that connects the end points of two ways. If no node connects the ends of the ways, this returns
-// the SPECIAL_NODEID
-NodeID ExtractionContainers::findConnectingNodeID(const std::vector<InternalExtractorEdge> &way_edges1, const std::vector<InternalExtractorEdge> &way_edges2) {
-    if ((way_edges1.front().result.source == way_edges2.front().result.source) ||
-        (way_edges1.front().result.source == way_edges2.back().result.target))
-    {
-        return way_edges1.front().result.source;
-    }
-    else if ((way_edges1.back().result.target == way_edges2.back().result.target) ||
-             (way_edges1.back().result.target == way_edges2.front().result.source))
-    {
-        return way_edges1.back().result.target;
-    }
-    return SPECIAL_NODEID;
+    SimpleLogger().Write() << "Number of unfolded restrictions: " << unfolded_restrictions_count;
 }

@@ -69,9 +69,7 @@ void ExtractorCallbacks::ProcessRestriction(
 {
     if (restriction)
     {
-        if (!restriction.get().restriction.flags.uses_via_way) {
-            external_memory.restrictions_list.push_back(restriction.get());
-        }
+        external_memory.restrictions_list.push_back(restriction.get());
         // SimpleLogger().Write() << "from: " << restriction.get().restriction.from.node <<
         //                           ",via: " << restriction.get().restriction.via.node <<
         //                           ", to: " << restriction.get().restriction.to.node <<
