@@ -40,10 +40,15 @@ template <typename Iterator, class HandlerT> struct APIGrammar : qi::grammar<Ite
     {
         api_call = qi::lit('/') >> string[boost::bind(&HandlerT::setService, handler, ::_1)] >>
                    *(query) >> -(uturns);
-        query = ('?') >> (+(zoom | output | jsonp | checksum | location | destination | source | hint | timestamp | bearing | u | cmp |
+        query = ('?') >> (+(zoom | output | jsonp | checksum | location_with_options | destination_with_options | source_with_options |  cmp |
                             language | instruction | geometry | alt_route | old_API | num_results |
                             matching_beta | gps_precision | classify | locs));
-
+        location_options = (hint >> *(u | timestamp | (u >> timestamp) | (timestamp >> u))) |
+                           (u >> *(hint | timestamp | (hint >> timestamp) | (timestamp >> hint))) |
+                           (timestamp >> *(u | hint | (u >> hint) | (hint >> u))) ;
+        location_with_options = location >> !location_options;
+        source_with_options = source >> !location_options;
+        destination_with_options = destination >> !location_options;
         zoom = (-qi::lit('&')) >> qi::lit('z') >> '=' >>
                qi::short_[boost::bind(&HandlerT::setZoomLevel, handler, ::_1)];
         output = (-qi::lit('&')) >> qi::lit("output") >> '=' >>
@@ -101,7 +106,7 @@ template <typename Iterator, class HandlerT> struct APIGrammar : qi::grammar<Ite
         stringforPolyline = +(qi::char_("a-zA-Z0-9_.-[]{}@?|\\%~`^"));
     }
 
-    qi::rule<Iterator> api_call, query;
+    qi::rule<Iterator> api_call, query, location_options, location_with_options, destination_with_options, source_with_options;
     qi::rule<Iterator, std::string()> service, zoom, output, string, jsonp, checksum, location, destination, source,
         hint, timestamp, bearing, stringwithDot, stringwithPercent, language, geometry, cmp, alt_route, u,
         uturns, old_API, num_results, matching_beta, gps_precision, classify, locs, instruction, stringforPolyline;
