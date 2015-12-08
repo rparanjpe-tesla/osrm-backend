@@ -88,8 +88,6 @@ struct RouteParameters
 
     void getCoordinatesFromGeometry(const std::string &geometry_string);
 
-    void setMappedPointsFlag(const bool flag);
-
     short zoom_level;
     bool print_instructions;
     bool alternate_route;
@@ -98,7 +96,6 @@ struct RouteParameters
     bool deprecatedAPI;
     bool uturn_default;
     bool classify;
-    bool mapped_points;
     double matching_beta;
     double gps_precision;
     unsigned check_sum;

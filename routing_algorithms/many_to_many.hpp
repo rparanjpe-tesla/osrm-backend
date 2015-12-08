@@ -148,7 +148,7 @@ class ManyToManyRouting final
     }
 
     void ForwardRoutingStep(const unsigned source_id,
-                            const unsigned number_of_locations,
+                            const unsigned number_of_targets,
                             QueryHeap &query_heap,
                             const SearchSpaceWithBuckets &search_space_with_buckets,
                             std::shared_ptr<std::vector<EdgeWeight>> result_table) const
@@ -168,12 +168,12 @@ class ManyToManyRouting final
                 const unsigned target_id = current_bucket.target_id;
                 const int target_distance = current_bucket.distance;
                 const EdgeWeight current_distance =
-                    (*result_table)[source_id * number_of_locations + target_id];
+                    (*result_table)[source_id * number_of_targets + target_id];
                 // check if new distance is better
                 const EdgeWeight new_distance = source_distance + target_distance;
                 if (new_distance >= 0 && new_distance < current_distance)
                 {
-                    (*result_table)[source_id * number_of_locations + target_id] =
+                    (*result_table)[source_id * number_of_targets + target_id] =
                         (source_distance + target_distance);
                 }
             }

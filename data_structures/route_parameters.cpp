@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 RouteParameters::RouteParameters()
     : zoom_level(18), print_instructions(false), alternate_route(true), geometry(true),
-      compression(true), deprecatedAPI(false), uturn_default(false), classify(false), mapped_points(true),
+      compression(true), deprecatedAPI(false), uturn_default(false), classify(false),
       matching_beta(5), gps_precision(5), check_sum(-1), num_results(1)
 {
 }
@@ -176,4 +176,3 @@ void RouteParameters::getCoordinatesFromGeometry(const std::string &geometry_str
     coordinates = pc.decode_string(geometry_string);
 }
 
-void RouteParameters::setMappedPointsFlag(const bool flag) { mapped_points = flag; }
