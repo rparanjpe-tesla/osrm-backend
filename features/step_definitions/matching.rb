@@ -14,7 +14,7 @@ When /^I match I should get$/ do |table|
             if v=='(nil)'
               params[$1]=nil
             elsif v!=nil
-              params[$1]=v
+              params[$1]=[v]
             end
             got[k]=v
           end
@@ -40,6 +40,7 @@ When /^I match I should get$/ do |table|
       if response.body.empty? == false
         json = JSON.parse response.body
       end
+      puts json
 
       if table.headers.include? 'status'
         got['status'] = json['status'].to_s

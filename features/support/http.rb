@@ -1,29 +1,24 @@
 require 'net/http'
 
-def generate_request_url path
-  if @http_method.eql? "POST"
-    pos = path.index('?') - 1
-    service = path[0..pos]
-    uri = URI.parse "#{HOST}/#{service}"
-  else
-    uri = URI.parse "#{HOST}/#{path}"
+# Converts a hash of "param" => ["val1", "val2"] into ?param=val1&param=val2
+def params_to_url params
+  kv_pairs = []
+  params.each do |param,values|
+    kv_pairs.concat values.map { |value| param.to_s + "=" + value.to_s }
   end
+  url = "?" + kv_pairs.join("&")
+  return url
 end
 
-def send_request uri, waypoints=[], options={}, timestamps=[]
-  @query = uri.to_s
+def send_request base_uri, parameters
   Timeout.timeout(OSRM_TIMEOUT) do
     if @http_method.eql? "POST"
-      datas = {}
-      if waypoints.length > 0
-        datas[:loc] = waypoints.compact.map { |w| "#{w.lat},#{w.lon}" }
-      end
-      if timestamps.length > 0
-        datas[:t] = timestamps.compact.map { |t| "#{t}" }
-      end
-      datas.merge! options
-      response = Net::HTTP.post_form uri, datas
+      uri = URI.parse base_uri
+      @query = uri.to_s
+      response = Net::HTTP.post_form uri, parameters
     else
+      uri = URI.parse base_uri+(params_to_url parameters)
+      @query = uri.to_s
       response = Net::HTTP.get_response uri
     end
   end

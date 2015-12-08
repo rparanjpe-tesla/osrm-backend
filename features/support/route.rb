@@ -3,25 +3,10 @@ require 'net/http'
 HOST = "http://127.0.0.1:#{OSRM_PORT}"
 DESTINATION_REACHED = 15      #OSRM instruction code
 
-class Hash
-  def to_param(namespace = nil)
-    collect do |key, value|
-      "#{key}=#{value}"
-    end.sort
-  end
-end
-
-def request_path path, waypoints=[], options={}
-  locs = waypoints.compact.map { |w| "loc=#{w.lat},#{w.lon}" }
-  params = (locs + options.to_param).join('&')
-  params = nil if params==""
-  
-  if params == nil
-    uri = generate_request_url (path)
-  else
-    uri = generate_request_url (path + '?' + params)
-  end
-  response = send_request uri, waypoints, options
+def request_path service, params
+  uri = "#{HOST}/" + service
+  response = send_request uri, params
+  return response
 end
 
 def request_url path
@@ -36,18 +21,82 @@ rescue Timeout::Error
   raise "*** osrm-routed did not respond."
 end
 
-def request_route waypoints, params={}
-  defaults = { 'output' => 'json', 'instructions' => true, 'alt' => false }
-  request_path "viaroute", waypoints, defaults.merge(params)
+def merge_params params, other
+  merged = {}
+  params.each do |k,v|
+    if other.has_key? k then
+      merged[k] = params[k].concat other[k]
+    else
+      merged[k] = params[k]
+    end
+  end
+  other.each do |k,v|
+      merged[k] = other[k]
+  end
+
+  return merged
 end
 
-def request_table waypoints, sources, params={}
-  defaults = { 'output' => 'json' }
-  options = defaults.merge(params)
-  locs = (sources.size > 0) ? (waypoints.compact.map { |w| "dst=#{w.lat},#{w.lon}" } + sources.compact.map { |w| "src=#{w.lat},#{w.lon}" }) : waypoints.compact.map { |w| "loc=#{w.lat},#{w.lon}" }
-  params = (locs + options.to_param).join('&')
-  uri = generate_request_url ("table" + '?' + params)
-  response = send_request uri, waypoints, options, sources
+def request_route waypoints, user_params
+  defaults = { 'output' => ['json'], 'instructions' => [true], 'alt' => [false] }
+  params = merge_params defaults, user_params
+  params[:loc] = waypoints.map{ |w| "#{w.lat},#{w.lon}" }
+
+  return request_path "viaroute", params
+end
+
+def request_locate node, user_params
+  defaults = { 'output' => ['json'] }
+  params = merge_params defaults, user_params
+  params[:loc] = ["#{node.lat},#{node.lon}"]
+
+  return request_path "locate", params
+end
+
+def request_nearest node, user_params
+  defaults = { 'output' => ['json'] }
+  params = merge_params defaults, user_params
+  params[:loc] = ["#{node.lat},#{node.lon}"]
+
+  return request_path "nearest", params
+end
+
+def request_table waypoints, user_params
+  defaults = { 'output' => ['json'] }
+  params = merge_params defaults, user_params
+  locs = waypoints.select{ |w| w[:type] == "loc"}.map { |w| "#{w[:coord].lat},#{w[:coord].lon}" }
+  dsts = waypoints.select{ |w| w[:type] == "dst"}.map { |w| "#{w[:coord].lat},#{w[:coord].lon}" }
+  srcs = waypoints.select{ |w| w[:type] == "src"}.map { |w| "#{w[:coord].lat},#{w[:coord].lon}" }
+  if locs.size > 0
+    params[:loc] = locs
+  end
+  if dsts.size > 0
+    params[:dst] = dsts
+  end
+  if srcs.size > 0
+    params[:src] = srcs
+  end
+
+  return request_path "table", params
+end
+
+def request_trip waypoints, user_params
+  defaults = { 'output' => ['json'] }
+  params = merge_params defaults, user_params
+  params[:loc] = waypoints.map{ |w| "#{w.lat},#{w.lon}" }
+
+  return request_path "trip", params
+end
+
+def request_matching waypoints, timestamps, user_params
+  defaults = { 'output' => ['json'] }
+  params = merge_params defaults, user_params
+  params[:loc] = waypoints.map{ |w| "#{w.lat},#{w.lon}" }
+  if timestamps.size > 0
+    params[:t] = timestamps
+  end
+
+  return request_path "match", params
 end
 
 def got_route? response
@@ -57,14 +106,14 @@ def got_route? response
       return way_list( json['route_instructions']).empty? == false
     end
   end
-  false
+  return false
 end
 
 def route_status response
   if response.code == "200" && !response.body.empty?
     json = JSON.parse response.body
     if json['status'] == 0
-      if way_list( json['route_instructions']).empty?
+      if way_list(json['route_instructions']).empty?
         return 'Empty route'
       else
         return 'x'
