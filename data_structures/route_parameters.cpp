@@ -146,22 +146,28 @@ void RouteParameters::addCoordinate(
     coordinates.emplace_back(
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<0>(received_coordinates)),
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<1>(received_coordinates)));
+    is_source.emplace_back(true);
+    is_destination.emplace_back(true);
 }
 
 void RouteParameters::addDestination(
     const boost::fusion::vector<double, double> &received_coordinates)
 {
-    destinations.emplace_back(
+    coordinates.emplace_back(
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<0>(received_coordinates)),
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<1>(received_coordinates)));
+    is_source.emplace_back(false);
+    is_destination.emplace_back(true);
 }
 
 void RouteParameters::addSource(
     const boost::fusion::vector<double, double> &received_coordinates)
 {
-    sources.emplace_back(
+    coordinates.emplace_back(
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<0>(received_coordinates)),
         static_cast<int>(COORDINATE_PRECISION * boost::fusion::at_c<1>(received_coordinates)));
+    is_source.emplace_back(true);
+    is_destination.emplace_back(false);
 }
 
 void RouteParameters::getCoordinatesFromGeometry(const std::string &geometry_string)

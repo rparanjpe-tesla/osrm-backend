@@ -67,10 +67,10 @@ class ManyToManyRouting final
     ~ManyToManyRouting() {}
 
     std::shared_ptr<std::vector<EdgeWeight>>
-    operator()(const PhantomNodeArray &phantom_targets_array, const PhantomNodeArray &phantom_sources_array = PhantomNodeArray(0)) const
+    operator()(const PhantomNodeArray &phantom_sources_array, const PhantomNodeArray &phantom_targets_array) const
     {
+        const auto number_of_sources = phantom_sources_array.size();
         const auto number_of_targets = phantom_targets_array.size();
-        const auto number_of_sources = (phantom_sources_array.size()) ? phantom_sources_array.size() : number_of_targets;
         std::shared_ptr<std::vector<EdgeWeight>> result_table =
             std::make_shared<std::vector<EdgeWeight>>(number_of_targets * number_of_sources,
                                                       std::numeric_limits<EdgeWeight>::max());
@@ -114,7 +114,7 @@ class ManyToManyRouting final
 
         // for each source do forward search
         unsigned source_id = 0;
-        for (const std::vector<PhantomNode> &phantom_node_vector : (phantom_sources_array.size() ? phantom_sources_array : phantom_targets_array))
+        for (const std::vector<PhantomNode> &phantom_node_vector : phantom_sources_array)
         {
             query_heap.Clear();
             for (const PhantomNode &phantom_node : phantom_node_vector)

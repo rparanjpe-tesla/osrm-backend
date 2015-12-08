@@ -112,8 +112,8 @@ struct RouteParameters
     std::vector<std::pair<const int,const boost::optional<int>>> bearings;
     std::vector<bool> uturns;
     std::vector<FixedPointCoordinate> coordinates;
-    std::vector<FixedPointCoordinate> destinations;
-    std::vector<FixedPointCoordinate> sources;
+    std::vector<bool> is_destination;
+    std::vector<bool> is_source;
 };
 
 #endif // ROUTE_PARAMETERS_HPP
